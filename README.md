@@ -45,12 +45,22 @@ toolbox once entered.
 ./b580.sh -m PATH -b sycl|vulkan [-- server|bench] [extra llama-* args]
 ```
 
-With no `-m`, it clears the screen and opens an `fzf` picker over every
-`.gguf` under `$B580_MODEL_DIR` (default `~/models/gguf`). Each entry is
-tagged `[dense]`/`[moe]` from the same filename heuristic used for backend
-suggestion, and a preview pane at the bottom shows the full path of the
-highlighted model. It then runs the picked model in the matching toolbox
-(`llama-server` by default, or `llama-bench` via `-- bench`).
+With no `-m`, it clears the screen and opens a full-height, colored `fzf`
+picker over every `.gguf` under `$B580_MODEL_DIR` (default `~/models/gguf`).
+Each entry is tagged `[dense]`/`[moe]` (green/yellow) from the same filename
+heuristic used for backend suggestion, and a preview pane at the bottom
+shows the full path of the highlighted model. It then runs the picked model
+in the matching toolbox (`llama-server` by default, or `llama-bench` via
+`-- bench`).
+
+Entries are labeled by repo directory, not filename — e.g.
+`unsloth/Qwen3.6-27B-MTP-GGUF` rather than `Qwen3.6-27B-Q4_K_S.gguf` — since
+the repo dir often carries info the filename doesn't (MTP variants, etc).
+Root-level flat files with no repo dir fall back to showing the filename.
+Split GGUF shards (`Model-00001-of-00003.gguf`, `-00002-`, `-00003-`) in the
+same repo dir collapse into a single entry, resolving to the first part;
+distinct quants sitting side by side in the same repo dir instead keep one
+entry each, with the filename appended to tell them apart.
 
 Backend suggestion (`-b`) follows the pattern below: dense models default to
 SYCL, MoE models to Vulkan — override any time with `-b`. Drop a

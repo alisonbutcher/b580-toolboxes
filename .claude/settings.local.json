@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(command -v fzf)",
+      "Bash(fzf --version)",
+      "Bash(bash -n /home/alison/projects/toolbox/inference)",
+      "Bash(time /home/alison/projects/toolbox/inference --preview-info /home/alison/models/gguf/unsloth/gpt-oss-20b-GGUF/gpt-oss-20b-Q4_K_S.gguf)",
+      "Bash(time /home/alison/projects/toolbox/inference --preview-info /home/alison/models/gguf/lmstudio-community/gemma-4-12B-it-GGUF/gemma-4-12B-it-Q4_K_M.gguf)"
+    ]
+  }
+}

@@ -1,0 +1,54 @@
+# B580 (Intel Battlemage) llama.cpp — SYCL backend toolbox
+# Build:  podman build -t localhost/b580-llamacpp-sycl:latest -f Containerfile.sycl .
+# Create: toolbox create b580-sycl --image localhost/b580-llamacpp-sycl:latest \
+#           -- --device /dev/dri --group-add video --group-add render \
+#              --security-opt seccomp=unconfined
+# Enter:  toolbox enter b580-sycl
+
+FROM fedora:44
+
+RUN rpm --import https://yum.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
+    && tee /etc/yum.repos.d/oneAPI.repo > /dev/null <<'EOF'
+[oneAPI]
+name=Intel(R) oneAPI repository
+baseurl=https://yum.repos.intel.com/oneapi
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://yum.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
+EOF
+
+RUN dnf install -y intel-oneapi-compiler-dpcpp-cpp intel-oneapi-mkl-devel \
+    && dnf clean all
+
+RUN dnf install -y \
+        intel-compute-runtime \
+        intel-level-zero \
+        intel-level-zero-devel \
+        oneapi-level-zero \
+        oneapi-level-zero-devel \
+        intel-gsc \
+        clinfo \
+    && dnf clean all
+
+RUN dnf install -y \
+        git cmake gcc-c++ make \
+        libcurl-devel \
+    && dnf clean all
+
+WORKDIR /opt
+RUN git clone --depth 1 https://github.com/ggml-org/llama.cpp
+
+WORKDIR /opt/llama.cpp
+RUN bash -c "source /opt/intel/oneapi/setvars.sh && \
+    cmake -B build -DGGML_SYCL=ON \
+        -DCMAKE_C_COMPILER=icx \
+        -DCMAKE_CXX_COMPILER=icpx \
+        -DGGML_SYCL_F16=ON \
+        -DCMAKE_BUILD_TYPE=Release && \
+    cmake --build build -j\$(nproc)"
+
+RUN echo 'source /opt/intel/oneapi/setvars.sh > /dev/null 2>&1' >> /etc/profile.d/oneapi.sh \
+    && echo 'export PATH=/opt/llama.cpp/build/bin:$PATH' >> /etc/profile.d/llamacpp.sh
+
+WORKDIR /opt/llama.cpp

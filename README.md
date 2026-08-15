@@ -167,3 +167,53 @@ q8_0 --cache-type-v q8_0 -np 1 --spec-type draft-mtp --spec-draft-n-max 2`.
 and hope) — set `-c` manually and validate with a real prompt, not just a
 clean model load, since the failure mode only shows up under inference.
 Auto-fit may still be fine for non-MTP runs; that wasn't separately tested.
+
+## Qwen3.8-27B-Q4_K_S findings (2x B580, SYCL)
+
+Same dense/MTP-capable family as Qwen3.6-27B-MTP above, but noticeably more
+VRAM-efficient — every number here beats the 3.6 findings at the same
+context. Baseline settings throughout: `--cache-type-k q8_0 --cache-type-v
+q8_0 -np 1 -fa on`, `-ngl 999` (auto-split, no `-ts`).
+
+### Non-MTP baseline
+
+With `-c` omitted (`--fit on`, no `-ngl` override needed since `b580.sh`
+already passes `-ngl 999` and lets `common_fit_params` size context):
+
+| Quant | `n_ctx_slot` (auto-fit) | tg | Notes |
+|---|---|---|---|
+| Q4_K_S | 161280 | 19.79 t/s | matches Unsloth Studio's own tuned Vulkan fork on speed (~18-20 t/s) but ~1.8x the context (88k there) |
+| IQ4_XS | 171264 | 14.30 t/s | IQ-format costs real compute even on SYCL (~28% slower than Q4_K_S) — but nowhere near Vulkan's collapse to 5.54 t/s on the same quant. SYCL's IQ-quant kernels are meaningfully better optimized than Vulkan's. |
+
+pp512-equivalent throughput on a real ~8500-token prompt: ~490-541 tok/s —
+the tiny-prompt number you'll see on a first request (~10 t/s) is pure fixed
+overhead noise, not a real pp measurement. Always validate pp with a prompt
+of at least a couple thousand tokens.
+
+### MTP binary search — and a new failure mode: hangs, not just crashes
+
+| `-c` | Result |
+|---|---|
+| 65536 | ✓ loads, ✓ real inference tested clean (24.28 t/s, 62.5% draft acceptance) |
+| 81920 | ✓ loads, ✓ real inference tested clean (23.34 t/s, 58.4% draft acceptance) — matches 3.6's recommended ceiling |
+| 98304 | ✓ loads, ✓ **survived a heavy ~8700-token stress prompt** (22.89 t/s, 65.2% acceptance) — this is exactly where the 3.6 model OOM'd under load; 3.8 doesn't |
+| 114688 | ✓ loads, ✓ survived the same stress prompt — best numbers of the whole run (24.43 t/s, 72.7% acceptance) — **recommended ceiling** |
+| 118784 | ✗ **hangs** — `UR_RESULT_ERROR_OUT_OF_RESOURCES` / `Error OP CONCAT`, process pegs a CPU core and never responds. Not a clean abort like the others; needs `kill -9`. Confirmed no lasting GPU damage (`sycl-ls` still sees both devices immediately after), but don't rely on that — kill it promptly rather than waiting it out. |
+| 122880 | ✗ clean OOM crash (`UR_RESULT_ERROR_OUT_OF_DEVICE_MEMORY`, inside `common_speculative_impl_draft_mtp::process`) |
+| 131072 | ✗ clean OOM crash, same signature — 3.6 failed here at *load* time; 3.8 gets further (loads fine, only fails under heavy decode load) |
+
+Tested with: `-m Qwen3.8-27B-Q4_K_S.gguf -b sycl -c 114688 --cache-type-k
+q8_0 --cache-type-v q8_0 -np 1 -fa on --spec-type draft-mtp
+--spec-draft-n-max 2`. Stress-validated with a real ~8700-token prompt, not
+just a short completion — the light-load test alone wasn't enough to catch
+the 118784 hang (a quick 150-token completion loaded and generated fine at
+every context size tried, including ones that failed under heavier load).
+
+**New takeaway beyond the 3.6 findings:** the boundary right above a working
+MTP context isn't a clean cliff — failure mode is inconsistent (some values
+OOM cleanly, one hung instead). Don't binary-search all the way to the exact
+edge and stop one step below the last failure; leave real margin (3.8's
+114688 sits comfortably below the 118784 hang, not immediately adjacent to
+it) since the step immediately below a crash can still be the unstable one.
+
+Sidecar in use: `unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-Q4_K_S.gguf.args`.

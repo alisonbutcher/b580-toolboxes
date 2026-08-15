@@ -75,7 +75,8 @@ sidecar_args() {
         # shellcheck disable=SC2046
         out=($(grep -v '^\s*#' "$args_file" | tr '\n' ' '))
     fi
-    printf '%s\n' "${out[@]}"
+    (( ${#out[@]} > 0 )) && printf '%s\n' "${out[@]}"
+    return 0
 }
 
 while [[ $# -gt 0 ]]; do

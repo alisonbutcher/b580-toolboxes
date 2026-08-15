@@ -26,6 +26,8 @@ RUN dnf install -y \
 RUN dnf install -y \
         git cmake gcc-c++ make \
         libcurl-devel \
+        procps-ng \
+        htop \
     && dnf clean all
 
 # --- Build llama.cpp with Vulkan backend ---

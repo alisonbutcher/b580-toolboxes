@@ -7,6 +7,11 @@
 
 FROM fedora:44
 
+# --- Intel oneAPI DPC++/C++ compiler (icx / icpx) ---
+# Fedora 44 ships dnf5, which replaced `config-manager --add-repo <url>`.
+# Intel doesn't host a ready-made oneAPI.repo file at a stable URL, so we
+# write it ourselves per Intel's current YUM/DNF install docs, then install
+# just the DPC++/C++ compiler (not the full base toolkit — smaller, faster).
 RUN rpm --import https://yum.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
     && tee /etc/yum.repos.d/oneAPI.repo > /dev/null <<'EOF'
 [oneAPI]
@@ -21,6 +26,10 @@ EOF
 RUN dnf install -y intel-oneapi-compiler-dpcpp-cpp intel-oneapi-mkl-devel \
     && dnf clean all
 
+# --- Level Zero + OpenCL GPU runtime (the part that's easy to miss) ---
+# intel-level-zero        -> GPU-side L0 driver
+# oneapi-level-zero(+dev) -> the loader sycl-ls/llama.cpp actually calls
+# intel-compute-runtime   -> OpenCL NEO runtime
 RUN dnf install -y \
         intel-compute-runtime \
         intel-level-zero \
@@ -31,15 +40,21 @@ RUN dnf install -y \
         clinfo \
     && dnf clean all
 
+# --- Build tooling ---
 RUN dnf install -y \
         git cmake gcc-c++ make \
         libcurl-devel \
+        procps-ng \
+        htop \
     && dnf clean all
 
+# --- Build llama.cpp with SYCL backend ---
 WORKDIR /opt
 RUN git clone --depth 1 https://github.com/ggml-org/llama.cpp
 
 WORKDIR /opt/llama.cpp
+# Source oneAPI env only for the build step; the entrypoint script re-sources
+# it at container start for interactive use.
 RUN bash -c "source /opt/intel/oneapi/setvars.sh && \
     cmake -B build -DGGML_SYCL=ON \
         -DCMAKE_C_COMPILER=icx \
@@ -48,7 +63,11 @@ RUN bash -c "source /opt/intel/oneapi/setvars.sh && \
         -DCMAKE_BUILD_TYPE=Release && \
     cmake --build build -j\$(nproc)"
 
+# Make binaries + oneAPI env available on every shell entry
 RUN echo 'source /opt/intel/oneapi/setvars.sh > /dev/null 2>&1' >> /etc/profile.d/oneapi.sh \
     && echo 'export PATH=/opt/llama.cpp/build/bin:$PATH' >> /etc/profile.d/llamacpp.sh
+
+# render/video group membership is granted at `toolbox create` time via
+# --group-add, not baked into the image — group GIDs must match the host.
 
 WORKDIR /opt/llama.cpp

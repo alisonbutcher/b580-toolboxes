@@ -6,7 +6,7 @@
 # This bypasses b580.sh entirely (no picker, no sidecar-file lookup) — the
 # validated flags below are hardcoded so this script is self-contained and
 # won't silently drift if the sidecar file at
-# models/gguf/unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-Q4_K_S.gguf.args ever
+# models/active/qwen3.8-27b-Q4_K_S.gguf.args ever
 # changes. See README.md "Qwen3.8-27B-Q4_K_S findings" for how these numbers
 # were derived (binary-searched context ceiling, real-load stress-tested,
 # not just checked at model-load time).
@@ -27,8 +27,8 @@
 
 set -euo pipefail
 
-MODEL="${QWEN_MODEL:-$HOME/models/gguf/unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-Q4_K_S.gguf}"
-MMPROJ="${QWEN_MMPROJ:-$HOME/models/gguf/unsloth/Qwen3.8-27B-GGUF/mmproj-F16.gguf}"
+MODEL="${QWEN_MODEL:-$HOME/models/active/qwen3.8-27b-Q4_K_S.gguf}"
+MMPROJ="${QWEN_MMPROJ:-$HOME/models/active/qwen3.8-27b-mmproj-F16.gguf}"
 CTX="${QWEN_CTX:-110688}"
 TOOLBOX="b580-vulkan"
 

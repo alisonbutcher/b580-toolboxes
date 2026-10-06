@@ -23,8 +23,8 @@
 
 set -euo pipefail
 
-MODEL="${QWEN_MODEL:-$HOME/models/gguf/unsloth/Qwen3.6-35B-A3B-GGUF/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf}"
-MMPROJ="${QWEN_MMPROJ:-$HOME/models/gguf/unsloth/Qwen3.6-35B-A3B-GGUF/mmproj-F32.gguf}"
+MODEL="${QWEN_MODEL:-$HOME/models/active/qwen3.6-35b-a3b-UD-IQ4_XS.gguf}"
+MMPROJ="${QWEN_MMPROJ:-$HOME/models/active/qwen3.6-35b-a3b-mmproj-F32.gguf}"
 CTX="${QWEN_CTX:-49152}"
 TOOLBOX="b580-vulkan"
 

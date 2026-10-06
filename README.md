@@ -216,4 +216,4 @@ edge and stop one step below the last failure; leave real margin (3.8's
 114688 sits comfortably below the 118784 hang, not immediately adjacent to
 it) since the step immediately below a crash can still be the unstable one.
 
-Sidecar in use: `unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-Q4_K_S.gguf.args`.
+Sidecar in use: `active/qwen3.8-27b-Q4_K_S.gguf.args`.
